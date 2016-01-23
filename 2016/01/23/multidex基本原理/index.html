@@ -3,8 +3,20 @@
 <head>
   <meta charset="utf-8">
   
-  <title>Hexo</title>
+  <title>multidex基本原理</title>
   <meta name="author" content="pisazzpan">
+  
+  <meta name="description" content="&lt;!DOCTYPE html&gt;
+
+
+
+multidex基本原理
+
+
+
+multidex基本原理multidex1.出现原因下面所说的的都是在android 5.0以下 
+multidex主要是因为两个情况： 
+- 第一个情况是一个dex的情况下方法数过多，如果一个dex超过了65536个方法，就会安">
   
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
@@ -83,40 +95,29 @@
 
   <div class="container">
   	<div class="content">
-    	 <div class="page-header">
-  <h1>Hexo</h1>
-</div>
+    	 
 
-<div class="row page">
 
 	
+		<div class="page-header">		
+			<h1> </h1>
+		</div>		
+	
+
+
+
+<div class="row post">
+	<!-- cols -->
+	
+	<div id="top_meta"></div>
 	<div class="col-md-9">
 	
 
-		<div class="slogan">
-      <i class="fa fa-heart"></i>
-      Yet another bootstrap theme.
-</div>    
-		<div id="top_search"></div>
-		<div class="mypage">
-		
-		<!-- title and entry -->
-		
-			
-	
-	<!-- display as entry -->	
-		<h3 class="title">
-			<div class="date"> 2016-01-23 </div>
-			<div class="article-title"><a href="/2016/01/23/multidex基本原理/" ></a></div>						
-		</h3>
-	
+	<!-- content -->
+	<div class="mypage">		
+	  		
 
-
-			<div class="entry">
-  <div class="row">
-	
-	
-		<!DOCTYPE html>
+	  <!DOCTYPE html>
 <html class="theme theme-white">
 <head>
 <meta charset="utf-8">
@@ -132,120 +133,74 @@ multidex主要是因为两个情况： <br>
 主要包含两部分，第一部分是从apk包中找寻各个分dex(class2.dex,class3.dex....classN.dex),然后解压出来，在压缩至zip格式的文件放在file列表里面，之前做的一个优化就是这个步骤,图中installSecondary上面的部分(省解压和压缩步骤)，得到这个zip格式列表之后，在<code>installSecondaryDexes(loader，dexDir，files)</code>函数里面装载这个files列表，files列表就是存放的dex，zip格式存在，dexDir是一个app的得到存放dex的一个私有的缓存目录，loader是BaseClassLoader的子类，也就是DexClassLoader。安装的过程其实就是将把包含dex信息转换成DexPathList的dexElements数组，然后添加到DexClassLoader中当前DexPathList中的已知的dexElements数组后面即可。</p><p data-anchor-id="92ox">所以如果不用multidex方案，直接自己用DexClassLoader将分包好的分dex加到这个dexElements数组后面也是可以的。</p><p data-anchor-id="p49d">应用层安装核心的函数(v19版来说)：</p><div class="md-section-divider"></div><pre class="prettyprint linenums prettyprinted" data-anchor-id="aafk"><ol class="linenums"><li class="L0"><code class="language-java"><span class="kwd">private</span><span class="pln"> </span><span class="kwd">static</span><span class="pln"> </span><span class="kwd">void</span><span class="pln"> install</span><span class="pun">(</span><span class="typ">ClassLoader</span><span class="pln"> loader</span><span class="pun">,</span><span class="pln"> </span><span class="typ">List</span><span class="pun">&lt;</span><span class="typ">File</span><span class="pun">&gt;</span><span class="pln"> additionalClassPathEntries</span><span class="pun">,</span></code></li><li class="L1"><code class="language-java"><span class="pln">                </span><span class="typ">File</span><span class="pln"> optimizedDirectory</span><span class="pun">)</span></code></li><li class="L2"><code class="language-java"><span class="pln">                        </span><span class="kwd">throws</span><span class="pln"> </span><span class="typ">IllegalArgumentException</span><span class="pun">,</span><span class="pln"> </span><span class="typ">IllegalAccessException</span><span class="pun">,</span></code></li><li class="L3"><code class="language-java"><span class="pln">                        </span><span class="typ">NoSuchFieldException</span><span class="pun">,</span><span class="pln"> </span><span class="typ">InvocationTargetException</span><span class="pun">,</span><span class="pln"> </span><span class="typ">NoSuchMethodException</span><span class="pln"> </span><span class="pun">{</span></code></li><li class="L4"><code class="language-java"><span class="pln">            </span><span class="com">/* The patched class loader is expected to be a descendant of</span></code></li><li class="L5"><code class="language-java"><span class="com">             * dalvik.system.BaseDexClassLoader. We modify its</span></code></li><li class="L6"><code class="language-java"><span class="com">             * dalvik.system.DexPathList pathList field to append additional DEX</span></code></li><li class="L7"><code class="language-java"><span class="com">             * file entries.</span></code></li><li class="L8"><code class="language-java"><span class="com">             */</span></code></li><li class="L9"><code class="language-java"><span class="pln">            </span><span class="typ">Field</span><span class="pln"> pathListField </span><span class="pun">=</span><span class="pln"> findField</span><span class="pun">(</span><span class="pln">loader</span><span class="pun">,</span><span class="pln"> </span><span class="str">"pathList"</span><span class="pun">);</span><span class="com">//从DexClassLoader找到DexPathlist pathlist这个字段</span></code></li><li class="L0"><code class="language-java"><span class="pln">            </span><span class="typ">Object</span><span class="pln"> dexPathList </span><span class="pun">=</span><span class="pln"> pathListField</span><span class="pun">.</span><span class="pln">get</span><span class="pun">(</span><span class="pln">loader</span><span class="pun">);</span></code></li><li class="L1"><code class="language-java"><span class="pln">            </span><span class="typ">ArrayList</span><span class="pun">&lt;</span><span class="typ">IOException</span><span class="pun">&gt;</span><span class="pln"> suppressedExceptions </span><span class="pun">=</span><span class="pln"> </span><span class="kwd">new</span><span class="pln"> </span><span class="typ">ArrayList</span><span class="pun">&lt;</span><span class="typ">IOException</span><span class="pun">&gt;();</span></code></li><li class="L2"><code class="language-java"></code></li><li class="L3"><code class="language-java"><span class="pln">            </span><span class="com">//把makeDexElements返回后的分dex信息的dexElements[]数组，这个是属于DexPathList类的字段，数组里面每一个元素封装了zipfile，dexfile等信息，</span></code></li><li class="L4"><code class="language-java"><span class="pln">            </span><span class="com">//expandFieldArray是将分dex信息的dexElements数组添加到当前dexElements[]这个数组后面，</span></code></li><li class="L5"><code class="language-java"><span class="pln">            expandFieldArray</span><span class="pun">(</span><span class="pln">dexPathList</span><span class="pun">,</span><span class="pln"> </span><span class="str">"dexElements"</span><span class="pun">,</span><span class="pln"> makeDexElements</span><span class="pun">(</span><span class="pln">dexPathList</span><span class="pun">,</span></code></li><li class="L6"><code class="language-java"><span class="pln">                    </span><span class="kwd">new</span><span class="pln"> </span><span class="typ">ArrayList</span><span class="pun">&lt;</span><span class="typ">File</span><span class="pun">&gt;(</span><span class="pln">additionalClassPathEntries</span><span class="pun">),</span><span class="pln"> optimizedDirectory</span><span class="pun">,</span></code></li><li class="L7"><code class="language-java"><span class="pln">                    suppressedExceptions</span><span class="pun">));</span></code></li><li class="L8"><code class="language-java"></code></li><li class="L9"><code class="language-java"><span class="pln">            </span><span class="kwd">if</span><span class="pln"> </span><span class="pun">(</span><span class="pln">suppressedExceptions</span><span class="pun">.</span><span class="pln">size</span><span class="pun">()</span><span class="pln"> </span><span class="pun">&gt;</span><span class="pln"> </span><span class="lit">0</span><span class="pun">)</span><span class="pln"> </span><span class="pun">{</span></code></li><li class="L0"><code class="language-java"><span class="pln">                </span><span class="kwd">for</span><span class="pln"> </span><span class="pun">(</span><span class="typ">IOException</span><span class="pln"> e </span><span class="pun">:</span><span class="pln"> suppressedExceptions</span><span class="pun">)</span><span class="pln"> </span><span class="pun">{</span></code></li><li class="L1"><code class="language-java"><span class="pln">                    </span><span class="typ">Log</span><span class="pun">.</span><span class="pln">w</span><span class="pun">(</span><span class="pln">TAG</span><span class="pun">,</span><span class="pln"> </span><span class="str">"Exception in makeDexElement"</span><span class="pun">,</span><span class="pln"> e</span><span class="pun">);</span></code></li><li class="L2"><code class="language-java"><span class="pln">                </span><span class="pun">}</span></code></li><li class="L3"><code class="language-java"><span class="pln">                </span><span class="typ">Field</span><span class="pln"> suppressedExceptionsField </span><span class="pun">=</span></code></li><li class="L4"><code class="language-java"><span class="pln">                        findField</span><span class="pun">(</span><span class="pln">loader</span><span class="pun">,</span><span class="pln"> </span><span class="str">"dexElementsSuppressedExceptions"</span><span class="pun">);</span></code></li><li class="L5"><code class="language-java"><span class="pln">                </span><span class="typ">IOException</span><span class="pun">[]</span><span class="pln"> dexElementsSuppressedExceptions </span><span class="pun">=</span></code></li><li class="L6"><code class="language-java"><span class="pln">                        </span><span class="pun">(</span><span class="typ">IOException</span><span class="pun">[])</span><span class="pln"> suppressedExceptionsField</span><span class="pun">.</span><span class="pln">get</span><span class="pun">(</span><span class="pln">loader</span><span class="pun">);</span></code></li><li class="L7"><code class="language-java"></code></li><li class="L8"><code class="language-java"><span class="pln">                </span><span class="kwd">if</span><span class="pln"> </span><span class="pun">(</span><span class="pln">dexElementsSuppressedExceptions </span><span class="pun">==</span><span class="pln"> </span><span class="kwd">null</span><span class="pun">)</span><span class="pln"> </span><span class="pun">{</span></code></li><li class="L9"><code class="language-java"><span class="pln">                    dexElementsSuppressedExceptions </span><span class="pun">=</span></code></li><li class="L0"><code class="language-java"><span class="pln">                            suppressedExceptions</span><span class="pun">.</span><span class="pln">toArray</span><span class="pun">(</span></code></li><li class="L1"><code class="language-java"><span class="pln">                                    </span><span class="kwd">new</span><span class="pln"> </span><span class="typ">IOException</span><span class="pun">[</span><span class="pln">suppressedExceptions</span><span class="pun">.</span><span class="pln">size</span><span class="pun">()]);</span></code></li><li class="L2"><code class="language-java"><span class="pln">                </span><span class="pun">}</span><span class="pln"> </span><span class="kwd">else</span><span class="pln"> </span><span class="pun">{</span></code></li><li class="L3"><code class="language-java"><span class="pln">                    </span><span class="typ">IOException</span><span class="pun">[]</span><span class="pln"> combined </span><span class="pun">=</span></code></li><li class="L4"><code class="language-java"><span class="pln">                            </span><span class="kwd">new</span><span class="pln"> </span><span class="typ">IOException</span><span class="pun">[</span><span class="pln">suppressedExceptions</span><span class="pun">.</span><span class="pln">size</span><span class="pun">()</span><span class="pln"> </span><span class="pun">+</span></code></li><li class="L5"><code class="language-java"><span class="pln">                                            dexElementsSuppressedExceptions</span><span class="pun">.</span><span class="pln">length</span><span class="pun">];</span></code></li><li class="L6"><code class="language-java"><span class="pln">                    suppressedExceptions</span><span class="pun">.</span><span class="pln">toArray</span><span class="pun">(</span><span class="pln">combined</span><span class="pun">);</span></code></li><li class="L7"><code class="language-java"><span class="pln">                    </span><span class="typ">System</span><span class="pun">.</span><span class="pln">arraycopy</span><span class="pun">(</span><span class="pln">dexElementsSuppressedExceptions</span><span class="pun">,</span><span class="pln"> </span><span class="lit">0</span><span class="pun">,</span><span class="pln"> combined</span><span class="pun">,</span></code></li><li class="L8"><code class="language-java"><span class="pln">                            suppressedExceptions</span><span class="pun">.</span><span class="pln">size</span><span class="pun">(),</span><span class="pln"> dexElementsSuppressedExceptions</span><span class="pun">.</span><span class="pln">length</span><span class="pun">);</span></code></li><li class="L9"><code class="language-java"><span class="pln">                    dexElementsSuppressedExceptions </span><span class="pun">=</span><span class="pln"> combined</span><span class="pun">;</span></code></li><li class="L0"><code class="language-java"><span class="pln">                </span><span class="pun">}</span></code></li><li class="L1"><code class="language-java"></code></li><li class="L2"><code class="language-java"><span class="pln">                suppressedExceptionsField</span><span class="pun">.</span><span class="pln">set</span><span class="pun">(</span><span class="pln">loader</span><span class="pun">,</span><span class="pln"> dexElementsSuppressedExceptions</span><span class="pun">);</span></code></li><li class="L3"><code class="language-java"><span class="pln">            </span><span class="pun">}</span></code></li><li class="L4"><code class="language-java"><span class="pln">        </span><span class="pun">}</span></code></li></ol></pre></div>
 </body>
 </html>
-
-	
+	  
 	</div>
-  <a type="button" href="/2016/01/23/multidex基本原理/#more" class="btn btn-default more">閱讀本文</a>
-</div>
 
-		
-			
-	
-	<!-- display as entry -->	
-		<h3 class="title">
-			<div class="date"> 2016-01-23 </div>
-			<div class="article-title"><a href="/2016/01/23/hello-world/" >Hello World</a></div>						
-		</h3>
-	
-
-
-			<div class="entry">
-  <div class="row">
-	
-	
-		<p>Welcome to <a href="http://hexo.io/" target="_blank" rel="external">Hexo</a>! This is your very first post. Check <a href="http://hexo.io/docs/" target="_blank" rel="external">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="http://hexo.io/docs/troubleshooting.html" target="_blank" rel="external">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues" target="_blank" rel="external">GitHub</a>.</p>
-<h2 id="Quick_Start"><a href="#Quick_Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create_a_new_post"><a href="#Create_a_new_post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">"My New Post"</span></span><br></pre></td></tr></table></figure>
-<p>More info: <a href="http://hexo.io/docs/writing.html" target="_blank" rel="external">Writing</a></p>
-<h3 id="Run_server"><a href="#Run_server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="http://hexo.io/docs/server.html" target="_blank" rel="external">Server</a></p>
-<h3 id="Generate_static_files"><a href="#Generate_static_files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="http://hexo.io/docs/generating.html" target="_blank" rel="external">Generating</a></p>
-<h3 id="Deploy_to_remote_sites"><a href="#Deploy_to_remote_sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-<p>More info: <a href="http://hexo.io/docs/deployment.html" target="_blank" rel="external">Deployment</a></p>
-
-	
-	</div>
-  <a type="button" href="/2016/01/23/hello-world/#more" class="btn btn-default more">閱讀本文</a>
-</div>
-
-		
-
-		</div>
-
-		<!-- pagination -->
-		<div>
-  		<center>
-		<div class="pagination">
+	<div>
+  	<center>
+	<div class="pagination">
 <ul class="pagination">
 	 
+		
+          <li class="prev disabled"><a><i class="fa fa-arrow-circle-o-left"></i>上一頁</a></li>
+        
+
+        <li><a href="/archives"><i class="fa fa-archive"></i>Archive</a></li>
+
+		
+		   <li class="next"><a href="/2016/01/23/hello-world/" class="alignright next">下一頁<i class="fa fa-arrow-circle-o-right"></i></a></li>         
+        
+	
 </ul>
 </div>
 
-  		</center>
-		</div>
-
-		
-		
-	</div> <!-- col-md-9 -->
-
+    </center>
+	</div>
 	
-		<div class="col-md-3">
-	<div id="sidebar">
+	<!-- comment -->
 	
-			
-  <div id="site_search">
-   <div class="form-group">
-    <input type="text" id="local-search-input" name="q" results="0" placeholder="搜尋" class="st-search-input st-default-search-input form-control"/>
-   </div>  
-  <div id="local-search-result"></div>
-  </div>
+<section id="comment">
+  <h2 class="title">留言</h2>
 
+  
+</section>
 
+	</div> <!-- col-md-9/col-md-12 -->
 		
-			
-		
-			
+	
+	<div id="side_meta">
+		<div class="col-md-3" id="post_meta"> 
 
-		
-			
-<div class="widget">
-  <h4>最新文章</h4>
-  <ul class="entry list-unstyled">
+	<!-- date -->
+	
+	<div class="meta-widget">
+	<i class="fa fa-clock-o"></i>
+	2016-01-23 
+	</div>
+	
+
+	<!-- categories -->
     
-      <li>
-        <a href="/2016/01/23/multidex基本原理/" ><i class="fa fa-file-o"></i>...</a>
-      </li>
-    
-      <li>
-        <a href="/2016/01/23/hello-world/" ><i class="fa fa-file-o"></i>Hello World...</a>
-      </li>
-    
-  </ul>
-</div>
 
+	<!-- tags -->
 		
-			
-<div class="widget">
-	<h4>鏈接</h4>
-	<ul class="blogroll list-unstyled">
-	
-		<li><i class="fa fa-github"></i><a href="https://github.com/pmathticol/freemind/" title="Freemind's Github repository." target="_blank"]);">Freemind</a></li>
-	
-		<li><i class="fa fa-github"></i><a href="http://www.github.com/pmathticol" title="My Github account." target="_blank"]);">My Github</a></li>
-	
-		<li><i class="fa fa-linkedin"></i><a href="http://www.github.com/pmathticol" title="My Linkin account." target="_blank"]);">My LinkedIn</a></li>
-	
-	</ul>
-</div>
 
+	<!-- toc -->
+	<div class="meta-widget">
+	
+	</div>
+	
+    <hr>
+	
+</div><!-- col-md-3 -->
 
+	</div>
 		
-	</div> <!-- sidebar -->
-</div> <!-- col-md-3 -->
 
-	
-	
-</div> <!-- row-fluid -->
+</div><!-- row -->
+
+
+
 	</div>
   </div>
   <div class="container-narrow">
