@@ -3,13 +3,19 @@
 <head>
   <meta charset="utf-8">
   
-  <title>new post | pmathticol</title>
+  <title>pmathticol</title>
   <meta name="author" content="pisazzpan">
+  
+  <meta name="description" content="multidex基本原理标签（空格分隔）： multidex
+
+1.出现原因下面所说的的都是在android 5.0以下multidex主要是因为两个情况：
+
+第一个情况是一个dex的情况下方法数过多，如果一个dex超过了65536个方法，就会安装不成功，这个是本事dex格式限制，应用层无法更改，一">
   
   
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
-  <meta property="og:title" content="new post"/>
+  
   <meta property="og:site_name" content="pmathticol"/>
 
   
@@ -88,7 +94,7 @@
 
 	
 		<div class="page-header">		
-			<h1> new post</h1>
+			<h1> </h1>
 		</div>		
 	
 
@@ -105,7 +111,18 @@
 	<div class="mypage">		
 	  		
 
-	  	  
+	  <h1 id="multidex_u57FA_u672C_u539F_u7406"><a href="#multidex_u57FA_u672C_u539F_u7406" class="headerlink" title="multidex基本原理"></a>multidex基本原理</h1><p>标签（空格分隔）： multidex</p>
+<hr>
+<h2 id="1-_u51FA_u73B0_u539F_u56E0"><a href="#1-_u51FA_u73B0_u539F_u56E0" class="headerlink" title="1.出现原因"></a>1.出现原因</h2><p>下面所说的的都是在android 5.0以下<br>multidex主要是因为两个情况：</p>
+<ul>
+<li>第一个情况是一个dex的情况下方法数过多，如果一个dex超过了65536个方法，就会安装不成功，这个是本事dex格式限制，应用层无法更改，一个dex最多只能容纳65536个方法。</li>
+<li>第二个情况是在apk安装的时候会有一个dexopt的过程，这个是dexopt过程本身分配的内存的限制，5.0以下分别经历了4M/5M/8M/16M的限制，但是不能从根本上解决问题，假设方法没有达到上限，但是dexopt的时候超过这个内存限制，也会触发无法安装的错误。从这个错误可以看到，假设如果我们分成的两个包</li>
+</ul>
+<p>上面两种情况，第一种情况，采用multidex的方案后可以解决，但是第二个问题采用multidex方案后，依然还是可能有bug的，具体看<a href="http://code.google.com/p/android/issues/detail?id=22586" target="_blank" rel="external">issure 22586</a>和 <a href="http://code.google.com/p/android/issues/detail?id=78035" target="_blank" rel="external">Isseure 78035</a></p>
+<h2 id="2-_u5177_u4F53_u8FC7_u7A0B"><a href="#2-_u5177_u4F53_u8FC7_u7A0B" class="headerlink" title="2.具体过程"></a>2.具体过程</h2><p><img src="http://static.zybuluo.com/pmathticol/2x3va7lv888hn4l14sfrohph/123.JPG" alt="123.JPG-50.1kB">取自<a href="http://blog.csdn.net/zylc369/article/details/44660007" target="_blank" rel="external">这篇文章</a><br>用一句话来说，multidex主要是用来讲各个分dex信息添加加到DexClassLoader中的DexPathList的Elements数组当中，这个数组的格式包含了file，ZipFile，DexFile格式的所有信息。然后通过findclass就能够找到所有的类了，应用层就能运行了。<br>主要包含两部分，第一部分是从apk包中找寻各个分dex(class2.dex,class3.dex….classN.dex),然后解压出来，在压缩至zip格式的文件放在file列表里面，之前做的一个优化就是这个步骤,图中installSecondary上面的部分(省解压和压缩步骤)，得到这个zip格式列表之后，在<code>installSecondaryDexes(loader，dexDir，files)</code>函数里面装载这个files列表，files列表就是存放的dex，zip格式存在，dexDir是一个app的得到存放dex的一个私有的缓存目录，loader是BaseClassLoader的子类，也就是DexClassLoader。安装的过程其实就是将把包含dex信息转换成DexPathList的dexElements数组，然后添加到DexClassLoader中当前DexPathList中的已知的dexElements数组后面即可。</p>
+<p>所以如果不用multidex方案，直接自己用DexClassLoader将分包好的分dex加到这个dexElements数组后面也是可以的。</p>
+<p>应用层安装核心的函数(v19版来说)：<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">install</span><span class="params">(ClassLoader loader, List&lt;File&gt; additionalClassPathEntries,</span><br><span class="line">                File optimizedDirectory)</span></span><br><span class="line">                        <span class="keyword">throws</span> IllegalArgumentException, IllegalAccessException,</span><br><span class="line">                        NoSuchFieldException, InvocationTargetException, NoSuchMethodException </span>&#123;</span><br><span class="line">            <span class="comment">/* The patched class loader is expected to be a descendant of</span><br><span class="line">             * dalvik.system.BaseDexClassLoader. We modify its</span><br><span class="line">             * dalvik.system.DexPathList pathList field to append additional DEX</span><br><span class="line">             * file entries.</span><br><span class="line">             */</span></span><br><span class="line">            Field pathListField = findField(loader, <span class="string">"pathList"</span>);<span class="comment">//从DexClassLoader找到DexPathlist pathlist这个字段</span></span><br><span class="line">            Object dexPathList = pathListField.get(loader);</span><br><span class="line">            ArrayList&lt;IOException&gt; suppressedExceptions = <span class="keyword">new</span> ArrayList&lt;IOException&gt;();</span><br><span class="line"></span><br><span class="line">            <span class="comment">//把makeDexElements返回后的分dex信息的dexElements[]数组，这个是属于DexPathList类的字段，数组里面每一个元素封装了zipfile，dexfile等信息，</span></span><br><span class="line">            <span class="comment">//expandFieldArray是将分dex信息的dexElements数组添加到当前dexElements[]这个数组后面，</span></span><br><span class="line">            expandFieldArray(dexPathList, <span class="string">"dexElements"</span>, makeDexElements(dexPathList,</span><br><span class="line">                    <span class="keyword">new</span> ArrayList&lt;File&gt;(additionalClassPathEntries), optimizedDirectory,</span><br><span class="line">                    suppressedExceptions));</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> (suppressedExceptions.size() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">                <span class="keyword">for</span> (IOException e : suppressedExceptions) &#123;</span><br><span class="line">                    Log.w(TAG, <span class="string">"Exception in makeDexElement"</span>, e);</span><br><span class="line">                &#125;</span><br><span class="line">                Field suppressedExceptionsField =</span><br><span class="line">                        findField(loader, <span class="string">"dexElementsSuppressedExceptions"</span>);</span><br><span class="line">                IOException[] dexElementsSuppressedExceptions =</span><br><span class="line">                        (IOException[]) suppressedExceptionsField.get(loader);</span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span> (dexElementsSuppressedExceptions == <span class="keyword">null</span>) &#123;</span><br><span class="line">                    dexElementsSuppressedExceptions =</span><br><span class="line">                            suppressedExceptions.toArray(</span><br><span class="line">                                    <span class="keyword">new</span> IOException[suppressedExceptions.size()]);</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                    IOException[] combined =</span><br><span class="line">                            <span class="keyword">new</span> IOException[suppressedExceptions.size() +</span><br><span class="line">                                            dexElementsSuppressedExceptions.length];</span><br><span class="line">                    suppressedExceptions.toArray(combined);</span><br><span class="line">                    System.arraycopy(dexElementsSuppressedExceptions, <span class="number">0</span>, combined,</span><br><span class="line">                            suppressedExceptions.size(), dexElementsSuppressedExceptions.length);</span><br><span class="line">                    dexElementsSuppressedExceptions = combined;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">                suppressedExceptionsField.set(loader, dexElementsSuppressedExceptions);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure></p>
+	  
 	</div>
 
 	<div>
@@ -113,14 +130,14 @@
 	<div class="pagination">
 <ul class="pagination">
 	 
-				
-    	<li class="prev"><a href="/2016/02/03/my-new-post/" class="alignleft prev"><i class="fa fa-arrow-circle-o-left"></i>上一頁</a></li>
-  		
+		
+          <li class="prev disabled"><a><i class="fa fa-arrow-circle-o-left"></i>上一頁</a></li>
+        
 
         <li><a href="/archives"><i class="fa fa-archive"></i>Archive</a></li>
 
 		
-          <li class="next disabled"><a>下一頁<i class="fa fa-arrow-circle-o-right"></i></a></li>
+		   <li class="next"><a href="/2016/02/03/hello-world/" class="alignright next">下一頁<i class="fa fa-arrow-circle-o-right"></i></a></li>         
         
 	
 </ul>
